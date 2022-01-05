@@ -1,36 +1,31 @@
 import { debounce } from "lodash";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useDebounce } from "./useDebounce";
+
 export default function SearchInput() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchResults, setSearchResults] = useState(null);
   const [searchString, setSearchString] = useState("");
+  const delayedQuery = useCallback(
+    debounce(async (queryString) => {
+      const response = await getPeople(queryString);
+      const data = await response.json();
 
+      if (data.results && data.results.length) {
+        setSearchResults(data.results);
+      }
+    }, 500),
+    []
+  );
   const handleChange = (event) => {
     setSearchString(event.target.value);
+    delayedQuery(event.target.value);
   };
-
-  const debouncedCallBack = debounce(handleChange, 500);
-
-  const handleSearch = () => {};
-
-  useEffect(() => {
-    (async () => {
-      setIsLoading(true);
-      try {
-        const response = await getPeople(searchString);
-        const data = await response.json();
-        setSearchResults(data.results);
-        setIsLoading(false);
-      } catch (e) {
-        setIsLoading(false);
-      }
-    })();
-  }, [searchString]);
 
   return (
     <div>
-      <input type="search" onChange={debouncedCallBack} value={searchString} />
-      <button onClick={handleSearch}>Search</button>
+      <input type="search" onChange={handleChange} value={searchString} />
+      <button>Search</button>
       <div>
         {isLoading ? (
           <p>Loading...</p>
@@ -45,11 +40,11 @@ export default function SearchInput() {
 }
 
 async function getPeople(searchString) {
-  const res = await fetch(
+  const response = await fetch(
     `https://swapi.dev/api/people/?search=${searchString}`
   );
 
-  if (res.ok) {
-    return res;
+  if (response.ok) {
+    return response;
   }
 }
